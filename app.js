@@ -30,7 +30,6 @@ const YT = {
         let index = (parseInt(localStorage.getItem('yt_key_index')) || 0) + 1;
         if (index >= this.keys.length) index = 0;
         localStorage.setItem('yt_key_index', index);
-        console.log("Rotating to key index:", index);
     },
 
     async fetchAPI(endpoint, params) {
@@ -82,7 +81,6 @@ const Actions = {
     init() {
         const input = document.getElementById('search-input');
         if (input) {
-            // ★エンターキーで検索が走らないように修正
             input.addEventListener('keydown', (e) => { 
                 if (e.key === 'Enter') { e.preventDefault(); input.blur(); } 
             });
