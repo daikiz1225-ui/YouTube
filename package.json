@@ -1,0 +1,12 @@
+{
+  "name": "youtube-m3u8-experimental",
+  "version": "1.0.0",
+  "description": "YouTube m3u8 extraction API",
+  "main": "api/extract.js",
+  "dependencies": {
+    "@distube/ytdl-core": "^4.15.1"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
