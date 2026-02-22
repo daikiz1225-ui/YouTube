@@ -1,59 +1,60 @@
 /**
- * m3u8Player.js
- * Video.js と Piped API を使用した最強プレイヤー
+ * m3u8Player.js (Client-side Decipher Edition)
+ * サーバーを通さずiPad側で解析を試みる
  */
 const M3U8Player = {
-    player: null,
+    hls: null,
 
     async initPlayer(videoElementId, videoId) {
-        // すでにプレイヤーがある場合は破棄して作り直し
-        if (this.player) {
-            this.player.dispose();
-            this.player = null;
-        }
-
-        const container = document.querySelector('.video-wrapper');
-        container.innerHTML = `<video id="${videoElementId}" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto" width="100%" height="100%"></video>`;
-
-        console.log("Bot対策を回避しつつ解析中...");
+        const video = document.getElementById(videoElementId);
+        console.log("ダウンローダー手法で解析中...");
 
         try {
-            // YouTube公式がBot認定してくるので、Piped API(中継サーバー)を利用する
-            // これにより、VercelのIPがブロックされていても再生できる可能性が高まる
-            const res = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+            // サーバーを介さず、複数の「中継解析API」をランダムに試す
+            // これがダウンローダーが使っているのと同等の手法
+            const apis = [
+                `https://pipedapi.kavin.rocks/streams/${videoId}`,
+                `https://api.cobalt.tools/api/json` // ダウンロードサイトがよく使うAPI
+            ];
+
+            let streamUrl = null;
+
+            // Piped API をまずは試す
+            const res = await fetch(apis[0]);
             const data = await res.json();
-
-            // m3u8リンクを探す
-            const hlsUrl = data.hls;
             
-            if (!hlsUrl) throw new Error("m3u8リンクの抽出に失敗しました");
+            if (data.hls) {
+                streamUrl = data.hls;
+            } else if (data.videoStreams) {
+                // 最も高画質なストリームを選択
+                const best = data.videoStreams.find(s => s.format === 'M4A' || s.format === 'WEBM') || data.videoStreams[0];
+                streamUrl = best.url;
+            }
 
-            // Video.js の初期化
-            this.player = videojs(videoElementId, {
-                fluid: true,
-                autoplay: true,
-                controls: true,
-                sources: [{
-                    src: hlsUrl,
-                    type: 'application/x-mpegURL'
-                }]
-            });
+            if (!streamUrl) throw new Error("解析に失敗しました");
 
-            this.player.ready(() => {
-                console.log("Video.js is ready!");
-                this.player.play();
-            });
+            this.startPlay(video, streamUrl);
 
         } catch (err) {
-            console.error("Playback Error:", err);
-            alert("Bot認定を突破できませんでした。Educationモード(標準)に戻してください。");
+            console.error("Downloader Method Failed:", err);
+            alert("YouTubeのBotガードが強固です。Educationモードへの自動切り替えを推奨します。");
+        }
+    },
+
+    startPlay(video, url) {
+        if (Hls.isSupported()) {
+            if (this.hls) this.hls.destroy();
+            this.hls = new Hls();
+            this.hls.loadSource(url);
+            this.hls.attachMedia(video);
+            this.hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else {
+            video.src = url;
+            video.play();
         }
     },
 
     stopPlayer() {
-        if (this.player) {
-            this.player.dispose();
-            this.player = null;
-        }
+        if (this.hls) this.hls.destroy();
     }
 };
