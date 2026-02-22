@@ -1,13 +1,13 @@
 const ytdl = require('@distube/ytdl-core');
 
 module.exports = async (req, res) => {
+    // CORS設定
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).end();
     }
 
     const { id } = req.query;
@@ -19,6 +19,7 @@ module.exports = async (req, res) => {
     try {
         const videoUrl = `https://www.youtube.com/watch?v=${id}`;
         
+        // iPadからのアクセスを装う
         const info = await ytdl.getInfo(videoUrl, {
             requestOptions: {
                 headers: {
@@ -27,39 +28,34 @@ module.exports = async (req, res) => {
             }
         });
 
+        // HLS形式を探す
         const hlsFormat = info.formats.find(f => f.isHLS || (f.url && f.url.includes('manifest/hls_variant')));
 
         if (hlsFormat && hlsFormat.url) {
             return res.status(200).json({
                 success: true,
                 url: hlsFormat.url,
-                title: info.videoDetails.title,
                 type: 'm3u8'
             });
         } 
 
-        const fallbackFormat = ytdl.chooseFormat(info.formats, { 
-            quality: 'highestvideo', 
-            filter: 'videoandaudio' 
-        });
-
-        if (fallbackFormat && fallbackFormat.url) {
+        // 見つからない場合は最高画質の通常動画
+        const fallback = ytdl.chooseFormat(info.formats, { quality: 'highest', filter: 'videoandaudio' });
+        
+        if (fallback && fallback.url) {
             return res.status(200).json({
                 success: true,
-                url: fallbackFormat.url,
-                title: info.videoDetails.title,
-                type: 'mp4_fallback'
+                url: fallback.url,
+                type: 'mp4'
             });
         }
 
-        throw new Error('No playable formats found');
+        throw new Error('No playable formats');
 
     } catch (error) {
-        console.error('Extraction Error:', error.message);
         return res.status(500).json({ 
             success: false, 
-            error: 'Failed to extract video link',
-            details: error.message 
+            error: error.message 
         });
     }
 };
