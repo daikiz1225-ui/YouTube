@@ -1,6 +1,7 @@
 {
   "name": "youtube-premium-client",
   "version": "1.0.0",
+  "main": "api/extract.js",
   "dependencies": {
     "@distube/ytdl-core": "^4.15.1"
   }
